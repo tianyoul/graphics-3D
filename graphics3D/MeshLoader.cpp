@@ -1326,6 +1326,7 @@ class Camera {
     
     vec3 v;   // moving speed of 'w' and 's'
     double angularV;    //rotating angular velocity of 'a' and 'd'
+    vec3 acc;
 
 public:
 	Camera()
@@ -1367,15 +1368,40 @@ public:
 			0.0f,   0.0f, -2*fp*bp/(bp - fp),  0.0f);
 	}
     
+    void SetAcceleration(){
+        vec3 dif = wLookat - wEye;
+        
+        if(keyboardState['w'] or keyboardState['s']){
+            acc = dif * 0.03;
+        } else {
+            if(v.length() > 0){
+                acc = v * -0.01;
+            }
+            
+        }
+    }
+    
     void Control(){
         //the 2 speeds include directions
         float speed = 1;
         vec3 dif = wLookat - wEye;
-        v = dif * (keyboardState['w'] * speed + keyboardState['s'] * -speed);
+        
+        SetAcceleration();
+        
+        if(keyboardState['w'] or keyboardState['s']){
+            if( (v.x*dif.x + v.z*dif.z) < 5){
+                v = v + acc * (keyboardState['w'] * speed + keyboardState['s'] * -speed);
+            }
+        } else {
+            v = v + acc * speed;
+        }
+        
         
         float angularSpeed = 1;
+        
         angularV = keyboardState['a'] * -angularSpeed + keyboardState['d'] * angularSpeed;
     }
+    
     
     void Move(float dt) {
         //move the obj using v and angularV
@@ -1390,6 +1416,7 @@ public:
         //wLookat = wPrime + wEye;
         wEye = wLookat - wPrime;
     }
+    
     
     void SetwEye(vec3 pos){
         wEye = pos;
@@ -1457,26 +1484,92 @@ class Object
     
 	float orientation;
     float angularV;
-    vec3 velocity = vec3(0,0,0);
+    float angularAcceleration;
+    vec3 velocity;
+    vec3 acceleration;
     
     float rotation;
+    
+    
 
 public:
-	Object(Mesh *m, vec3 position = vec3(0.0, 0.0, 0.0), vec3 scaling = vec3(1.0, 1.0, 1.0), float orientation = 0.0, float rotation = 0.0) : position(position), scaling(scaling), orientation(orientation), rotation(rotation)
+    
+    bool destroy = false;
+    
+	Object(Mesh *m, vec3 position = vec3(0.0, 0.0, 0.0), vec3 scaling = vec3(1.0, 1.0, 1.0), float orientation = 0.0, vec3 velo = vec3(0,0,0), float rotation = 0.0) : position(position), scaling(scaling), orientation(orientation), rotation(rotation), velocity(velo)
 	{
 		shader = m->GetShader();
 		mesh = m;
 	}
+    
+    bool Collision(Object *target){
+        vec3 pos = this->GetPosition();
+        vec3 tarPos = target->GetPosition();
+        
+        return (pos-tarPos).length() < 0.2;
+    }
 
 	vec3 GetPosition() { return position; }
     
+    void SetPosition(vec3 pos) { position = pos; }
+    
+    float GetOrientation(){ return orientation;}
+    
+    void SetOrientation(vec3 dir){
+        
+        vec3 v1 = dir.normalize();
+        vec3 v2 = vec3(0,0,-1).normalize();
+        
+        float cos = v1.x*v2.x + v1.z*v2.z;
+        
+        
+        float angle = acosf(cos) * 180 / M_PI;
+        
+        if(v1.x < 0) angle = -angle;
+        
+        
+        orientation = angle + 180;
+    }
+    
     vec3 GetVelocity(){return velocity;}
+    
+    void Move(float dt){
+        position = position + velocity * dt;
+    }
+    
+//    void SetAcceleration(){
+//        vec3 dif = camera.GetLookat()-camera.GetwEye();
+//        
+//        if(keyboardState['w'] or keyboardState['s']){
+//            acceleration = dif * 0.03;
+//        }else {
+//            if(velocity.length() > 0){
+//                acceleration = velocity * -0.01;
+//            }
+//        }
+//        
+//    
+//    }
     
     void MovePosition(float dt){
         
-        vec3 dif = camera.GetLookat()-camera.GetwEye();
-        velocity = dif * (keyboardState['w'] - keyboardState['s']);
-        position = position + velocity * dt;
+//        vec3 dif = camera.GetLookat()-camera.GetwEye();
+        
+//        velocity = dif * (keyboardState['w'] - keyboardState['s']);
+        
+//        SetAcceleration();
+//        
+//        if(keyboardState['w'] or keyboardState['s']){
+//            velocity = velocity + acceleration * (keyboardState['w'] - keyboardState['s']);
+//        } else {
+//            velocity = velocity + acceleration;
+//        }
+//        
+        
+//        position = position + velocity * dt;
+        
+        position = camera.GetLookat();
+        position.y = -0.5;
         
         if(keyboardState['a'] or keyboardState['d']){
             float angularSpeed = 180/M_PI;
@@ -1487,9 +1580,75 @@ public:
 
     }
     
-    void Snake(float t, float dt){ //x=R*cos(t), y=A*sin(3*t), z=R*sin(t), R=3, A=0.5
-        velocity = vec3(-3*sin(t), 1.5*cos(3*t), 3*cos(t));
+    void Falling(float t, float dt){
+        velocity = vec3(cos(5*t), -2 ,sin(5*t)).normalize();
+        SetOrientation(velocity);
         position = position + velocity * dt;
+    }
+    
+    
+    void Circle(float t, float dt){
+        velocity = vec3(2*cos(2*t), 0, 2*sin(2*t)).normalize();
+        SetOrientation(velocity);
+        position = position + velocity * dt;
+        position.y = cos(t);
+    }
+    
+    void Follow(float t, float dt, Object* obj){ //x=R*cos(t), y=A*sin(3*t), z=R*sin(t), R=3, A=0.5
+        vec3 tarPos = obj->GetPosition();
+        vec3 pos = this->GetPosition();
+        vec3 v = tarPos - pos;
+        if(v.length() > 10){
+            velocity.x = 2*cos(2*t);
+            velocity.z = 2*sin(2*t);
+        }else{
+            velocity = vec3(v.x, 0, v.z).normalize();
+        }
+        
+        SetOrientation(velocity);
+        position = position + velocity * dt;
+        position.y = cos(t);
+    }
+    
+    
+    void Follow1(float t, float dt, Object* obj){ //x=R*cos(t), y=A*sin(3*t), z=R*sin(t), R=3, A=0.5
+        vec3 tarPos = obj->GetPosition();
+        vec3 pos = this->GetPosition();
+        vec3 v = tarPos - pos;
+        if(v.length() > 10){
+            velocity.x = 2*cos(2*t);
+            velocity.z = 2*sin(2*t);
+        }else{
+            velocity = vec3(v.x + 1,  0 , v.z + 1).normalize();
+        }
+        
+        
+        SetOrientation(velocity);
+        
+        position = position + velocity * dt;
+        
+        position.y = cos(2*t);
+        
+    }
+    
+    void Follow2(float t, float dt, Object* obj){ //x=R*cos(t), y=A*sin(3*t), z=R*sin(t), R=3, A=0.5
+        vec3 tarPos = obj->GetPosition();
+        vec3 pos = this->GetPosition();
+        vec3 v = tarPos - pos;
+        if(v.length() > 10){
+            velocity.x = 2*cos(2*t);
+            velocity.z = 2*sin(2*t);
+        }else{
+            velocity = vec3(v.x - 1,  0, v.z - 1).normalize();
+        }
+        
+        SetOrientation(velocity);
+        
+        position = position + velocity * dt;
+        
+        position.y = cos(3*t);
+        
+        
     }
     
     void frenet(float dt){
@@ -1554,6 +1713,8 @@ public:
     void Rotate(float dt){
         rotation += dt*200;
     }
+    
+    
 
 	void Draw()
 	{
@@ -1668,6 +1829,13 @@ Object* heli1;
 Object* rotor1;
 Object* heli2;
 Object* rotor2;
+Object* heli3;
+Object* rotor3;
+Object* heli4;
+Object* rotor4;
+Object* heli5;
+Object* rotor5;
+std::vector<Object*> bullets;
 
 class Scene
 {
@@ -1697,90 +1865,101 @@ public:
         infShader = new InfiniteQuadShader();
         shadowShader = new ShadowShader();
         
-        //wEye is at 0,0,2
-        //                  0             1            2           3          4        5       6
-        // texture:        tb        tree       airscrew        heli       rotor    lava
-        // material:       tb     smalltrees    airscrew      bigtree     heli    rotor   lava
-        // geometries:    tb.obj   tree.obj     airscrew       heli          rotor    infiniteQuad
-        // meshes:         tb     smalltrees    airscrew      bigtree     heli    quad
-        // object:         tb     smalltrees    airscrew       heli        lava
+        //ground as InfiniteTexturedQuad
+        textures.push_back(new Texture("lava.png"));
+        materials.push_back(new Material(infShader, vec3(0.1,0.1,0.1), vec3(0.9,0.9,0.9), vec3(0.0,0.0,0.0), 0, textures[0]));
+        geometries.push_back(new InfiniteTexturedQuad());
+        meshes.push_back(new Mesh(geometries[0], materials[0]));
+        objects.push_back(new Object(meshes[0], vec3(0, -1, 0), vec3(1, 1, 1), 0));
         
         //thunderbolt obj
 		textures.push_back(new Texture("orangeblue.png"));
-		materials.push_back(new Material(meshShader, vec3(0.1,0.1,0.1), vec3(0.9,0.9,0.9), vec3(0.0,0.0,0.0), 0, textures[0]));
+		materials.push_back(new Material(meshShader, vec3(0.1,0.1,0.1), vec3(0.9,0.9,0.9), vec3(0.0,0.0,0.0), 0, textures[1]));
 		geometries.push_back(new PolygonalMesh("thunderbolt_body.obj"));
-		meshes.push_back(new Mesh(geometries[0], materials[0]));
+		meshes.push_back(new Mesh(geometries[1], materials[1]));
 		
-		thunderbolt = new Object(meshes[0], vec3(0.0, -0.5, 0), vec3(0.02, 0.02, 0.02), 0.0, 0.0);
+		thunderbolt = new Object(meshes[1], vec3(0.0, -0.5, 0), vec3(0.02, 0.02, 0.02), 0.0, 0.0);
 		objects.push_back(thunderbolt);
         
         
         //3 tree objs diffuse
         textures.push_back(new Texture("tree.png"));
-        materials.push_back(new Material(meshShader, vec3(0.1,0.1,0.1), vec3(0.9,0.9,0.9), vec3(0.0,0.0,0.0), 0, textures[1]));
+        materials.push_back(new Material(meshShader, vec3(0.1,0.1,0.1), vec3(0.9,0.9,0.9), vec3(0.0,0.0,0.0), 0, textures[2]));
         geometries.push_back(new PolygonalMesh("tree.obj"));
-        meshes.push_back(new Mesh(geometries[1], materials[1]));
+        meshes.push_back(new Mesh(geometries[2], materials[2]));
         
         float depth = -1;
 
-        objects.push_back(new Object(meshes[1], vec3(1, depth, -1), vec3(0.01, 0.01, 0.01), 30.0));
-        objects.push_back(new Object(meshes[1], vec3(2, depth, -1.5), vec3(0.01, 0.01, 0.01), 80.0));
-        objects.push_back(new Object(meshes[1], vec3(-1, depth, -0.5), vec3(0.01, 0.01, 0.01), 105.0));
+        objects.push_back(new Object(meshes[2], vec3(1, depth, -1), vec3(0.01, 0.01, 0.01), 30.0));
+        objects.push_back(new Object(meshes[2], vec3(2, depth, -1.5), vec3(0.01, 0.01, 0.01), 80.0));
+        objects.push_back(new Object(meshes[2], vec3(-1, depth, -0.5), vec3(0.01, 0.01, 0.01), 105.0));
+        objects.push_back(new Object(meshes[2], vec3(-3, depth, -4), vec3(0.01, 0.01, 0.01), 105.0));
+        objects.push_back(new Object(meshes[2], vec3(4, depth, 2), vec3(0.01, 0.01, 0.01), 105.0));
+        objects.push_back(new Object(meshes[2], vec3(-5, depth, 1), vec3(0.01, 0.01, 0.01), 105.0));
+        objects.push_back(new Object(meshes[2], vec3(2, depth, 3), vec3(0.01, 0.01, 0.01), 105.0));
+        objects.push_back(new Object(meshes[2], vec3(-3, depth, -0.5), vec3(0.01, 0.01, 0.01), 105.0));
         
         
         
         //rotating airscrew
         textures.push_back(new Texture("orange.png"));
-        materials.push_back(new Material(meshShader, vec3(0.1,0.1,0.1), vec3(0.6,0.6,0.6), vec3(0.3,0.3,0.3), 50, textures[2]));
+        materials.push_back(new Material(meshShader, vec3(0.1,0.1,0.1), vec3(0.6,0.6,0.6), vec3(0.3,0.3,0.3), 50, textures[3]));
         geometries.push_back(new PolygonalMesh("thunderbolt_airscrew.obj"));
-        meshes.push_back(new Mesh(geometries[2], materials[2]));
-        airscrew = new Object(meshes[2], vec3(0.0, -0.5, 0.0), vec3(0.02, 0.02, 0.02), 0.0);
+        meshes.push_back(new Mesh(geometries[3], materials[3]));
+        airscrew = new Object(meshes[3], vec3(0.0, -0.5, 0.0), vec3(0.02, 0.02, 0.02), 0.0);
         objects.push_back(airscrew);
         
         
         //big specular tree
-        materials.push_back(new Material(meshShader, vec3(0.1,0.1,0.1), vec3(0.6,0.6,0.6), vec3(0.3,0.3,0.3), 50, textures[1]));
-        meshes.push_back(new Mesh(geometries[1], materials[3]));
-        objects.push_back(new Object(meshes[3], vec3(-0.5, depth, -3), vec3(0.1, 0.1, 0.1), 15));
+        materials.push_back(new Material(meshShader, vec3(0.1,0.1,0.1), vec3(0.6,0.6,0.6), vec3(0.3,0.3,0.3), 50, textures[2]));
+        meshes.push_back(new Mesh(geometries[2], materials[4]));
+        objects.push_back(new Object(meshes[4], vec3(-0.5, depth, -3), vec3(0.1, 0.1, 0.1), 15));
         
         
         //helicoptor and rotor
         textures.push_back(new Texture("heliait.png"));
-        materials.push_back(new Material(meshShader, vec3(0.1,0.1,0.1), vec3(0.6,0.6,0.6), vec3(0.3,0.3,0.3), 50, textures[3]));
+        materials.push_back(new Material(meshShader, vec3(0.1,0.1,0.1), vec3(0.6,0.6,0.6), vec3(0.3,0.3,0.3), 50, textures[4]));
         geometries.push_back(new PolygonalMesh("heli.obj"));
-        meshes.push_back(new Mesh(geometries[3], materials[4]));
+        meshes.push_back(new Mesh(geometries[4], materials[5]));
         
-        heli = new Object(meshes[4], vec3(1, 0.5, -1), vec3(0.02, 0.02, 0.02), 45.0);
-        heli1 = new Object(meshes[4], vec3(1, 0.5, -1), vec3(0.02, 0.02, 0.02), 60.0);
-        heli2 = new Object(meshes[4], vec3(1, 0.5, -1), vec3(0.02, 0.02, 0.02), 30.0);
+        heli = new Object(meshes[5], vec3(3, 0, 1), vec3(0.02, 0.02, 0.02), 45.0);
+        heli1 = new Object(meshes[5], vec3(-2, 0.5, -1), vec3(0.02, 0.02, 0.02), 60.0);
+        heli2 = new Object(meshes[5], vec3(-2, 0.0, 4), vec3(0.02, 0.02, 0.02), 30.0);
+        heli3 = new Object(meshes[5], vec3(3, 0, -4), vec3(0.02, 0.02, 0.02), 45.0);
+        heli4 = new Object(meshes[5], vec3(-3, 0, -3), vec3(0.02, 0.02, 0.02), 45.0);
+        heli5 = new Object(meshes[5], vec3(-2, 0, -3), vec3(0.02, 0.02, 0.02), 45.0);
         objects.push_back(heli);
         objects.push_back(heli1);
         objects.push_back(heli2);
+        objects.push_back(heli3);
+        objects.push_back(heli4);
+        objects.push_back(heli5);
         
         textures.push_back(new Texture("rotor.png"));
-        materials.push_back(new Material(meshShader, vec3(0.1,0.1,0.1), vec3(0.6,0.6,0.6), vec3(0.3,0.3,0.3), 50, textures[4]));
+        materials.push_back(new Material(meshShader, vec3(0.1,0.1,0.1), vec3(0.6,0.6,0.6), vec3(0.3,0.3,0.3), 50, textures[5]));
         geometries.push_back(new PolygonalMesh("mainrotor.obj"));
-        meshes.push_back(new Mesh(geometries[4], materials[3]));
-        
-        rotor = new Object(meshes[5], vec3(0.9, 0.8, -1), vec3(0.02, 0.02, 0.02), 90.0);
-//        rotor1 = new Object(meshes[5], vec3(1.9, 0.8, 1), vec3(0.02, 0.02, 0.02), 90.0);
-//        rotor2 = new Object(meshes[5], vec3(2.9, 0.8, 1.5), vec3(0.02, 0.02, 0.02), 90.0);
-//        objects.push_back(rotor);
-//        objects.push_back(rotor1);
-//        objects.push_back(rotor2);
-        
-        
-        
-        //ground as InfiniteTexturedQuad
-        textures.push_back(new Texture("lava.png"));
-        materials.push_back(new Material(infShader, vec3(0.1,0.1,0.1), vec3(0.9,0.9,0.9), vec3(0.0,0.0,0.0), 0, textures[5]));
-        geometries.push_back(new InfiniteTexturedQuad());
         meshes.push_back(new Mesh(geometries[5], materials[6]));
-        objects.push_back(new Object(meshes[6], vec3(0, -1, 0), vec3(1, 1, 1), 0));
+        
+        rotor = new Object(meshes[6], vec3(3, 0.3, 1), vec3(0.02, 0.02, 0.02), 45.0);
+        rotor1 = new Object(meshes[6], vec3(-2, 0.8, -1), vec3(0.02, 0.02, 0.02), 60.0);
+        rotor2 = new Object(meshes[6], vec3(-2, 0.3, 4), vec3(0.02, 0.02, 0.02), 90.0);
+        rotor3 = new Object(meshes[6], vec3(3, 0.3, -4), vec3(0.02, 0.02, 0.02), 45.0);
+        rotor4 = new Object(meshes[6], vec3(-3, 0.3, -3), vec3(0.02, 0.02, 0.02), 45.0);
+        rotor5 = new Object(meshes[6], vec3(-2, 0.3, -3), vec3(0.02, 0.02, 0.02), 45.0);
+        objects.push_back(rotor);
+        objects.push_back(rotor1);
+        objects.push_back(rotor2);
+        objects.push_back(rotor3);
+        objects.push_back(rotor4);
+        objects.push_back(rotor5);
+        
+        textures.push_back(new Texture("steel.png"));
+        materials.push_back(new Material(meshShader, vec3(0.1,0.1,0.1), vec3(0.6,0.6,0.6), vec3(0.3,0.3,0.3), 50, textures[6]));
+        geometries.push_back(new PolygonalMesh("bullet.obj"));
+        meshes.push_back(new Mesh(geometries[6], materials[7]));
         
         
-        
-	}
+    }
 
 
 	~Scene()
@@ -1793,15 +1972,26 @@ public:
 		
 		if(meshShader) delete meshShader;
 	}
+    
+    void pushBullet(vec3 pos, vec3 velocity, float ori){
+        Object *obj = new Object(meshes[7], pos, vec3(0.03, 0.01, 0.01), ori + 90, velocity);
+        bullets.push_back(obj);
+    }
 
 	void Draw()
 	{
 		for(int i = 0; i < objects.size(); i++)
         {
             objects[i]->Draw();
-            if(i != objects.size() - 1 ){
+            if(i != 0 && !objects[i]->destroy){
                 objects[i]->DrawShadow(shadowShader);
             }
+        }
+        
+        for(int j = 0; j < bullets.size(); j++)
+        {
+            bullets[j]->Draw();
+            bullets[j]->DrawShadow(shadowShader);
         }
 	}
 };
@@ -1848,6 +2038,25 @@ void onKeyboard(unsigned char key, int x, int y)
         tPressed = true;
         initialPos = camera.GetwEye();
     }
+    
+    if(key == 'v'){
+        keyboardState['v'] = true;
+        vec3 pos = airscrew->GetPosition();
+        vec3 dif = camera.GetLookat()-camera.GetwEye();
+        vec3 velo = dif;
+        
+        if(keyboardState['w']){
+            velo = velo * 5;
+        } else {
+            velo = velo * 4;
+        }
+        
+        float ori = airscrew->GetOrientation();
+        
+        scene.pushBullet(pos, velo, ori);
+        
+    }
+    
 }
 
 void onKeyboardUp(unsigned char key, int x, int y)
@@ -1877,9 +2086,66 @@ void onIdle( ) {
     double dt = t - lastTime;
     lastTime = t;
     
-    heli->Snake(t,dt);
-    heli1->Snake(t+1,dt);
-    heli2->Snake(t+2,dt);
+    
+    if(heli->destroy){
+        heli->Falling(t,dt);
+    } else {
+        heli->Follow(t,dt,thunderbolt);
+    }
+    
+    vec3 pos1 = heli->GetPosition();
+    rotor -> SetPosition(vec3(pos1.x, pos1.y+0.3, pos1.z));
+    
+    if(heli1->destroy){
+        heli1->Falling(t,dt);
+    } else {
+        heli1->Circle(t+1,dt);
+    }
+    
+    vec3 pos2 = heli1->GetPosition();
+    rotor1 -> SetPosition(vec3(pos2.x, pos2.y+0.3, pos2.z));
+    
+    
+    if(heli2 -> destroy){
+        heli2->Falling(t,dt);
+    } else {
+        heli2->Circle(t+2,dt);
+    }
+    
+    vec3 pos3 = heli2->GetPosition();
+    rotor2 -> SetPosition(vec3(pos3.x, pos3.y+0.3, pos3.z));
+    
+    
+    if(heli3 -> destroy){
+        heli3->Falling(t,dt);
+    } else {
+        heli3->Follow2(t+2,dt,thunderbolt);
+    }
+    
+    vec3 pos4 = heli3->GetPosition();
+    rotor3 -> SetPosition(vec3(pos4.x, pos4.y+0.3, pos4.z));
+    
+    
+    if(heli4 -> destroy){
+        heli4->Falling(t,dt);
+    } else {
+        heli4->Follow1(t+1,dt,thunderbolt);
+    }
+    
+    vec3 pos5 = heli4->GetPosition();
+    rotor4 -> SetPosition(vec3(pos5.x, pos5.y+0.3, pos5.z));
+    
+    
+    
+    if(heli5 -> destroy){
+        heli5->Falling(t,dt);
+    } else {
+        heli5->Circle(t+4,dt);
+    }
+    
+    vec3 pos6 = heli5->GetPosition();
+    rotor5 -> SetPosition(vec3(pos6.x, pos6.y+0.3, pos6.z));
+    
     
 
     if(keyboardState['t'] and tPressed){
@@ -1887,13 +2153,52 @@ void onIdle( ) {
         camera.TrackingShot(tHeart);
     }
     
-//    vec3 pos = thunderbolt->GetPosition();
-//    spotLight = new SpotLight(vec3(1.0, 1.0, 1.0), vec3(1.0, 1.0, 1.0), vec4(pos.x, 0.5, pos.z, 1.0));
+    for(int i = 0; i < bullets.size(); i++){
+        bullets[i]->Move(dt);
+        
+        if(bullets[i]->Collision(heli)){
+            heli->destroy = true;
+            rotor->destroy = true;
+            bullets.erase(bullets.begin() + i);
+        }
+        
+        if(bullets[i]->Collision(heli1)){
+            heli1->destroy = true;
+            rotor1->destroy = true;
+            bullets.erase(bullets.begin() + i);
+        }
+        
+        if(bullets[i]->Collision(heli2)){
+            heli2->destroy = true;
+            rotor2->destroy = true;
+            bullets.erase(bullets.begin() + i);
+        }
+        
+        if(bullets[i]->Collision(heli3)){
+            heli3->destroy = true;
+            rotor3->destroy = true;
+            bullets.erase(bullets.begin() + i);
+        }
+        
+        if(bullets[i]->Collision(heli4)){
+            heli4->destroy = true;
+            rotor4->destroy = true;
+            bullets.erase(bullets.begin() + i);
+        }
+        
+        if(bullets[i]->Collision(heli5)){
+            heli5->destroy = true;
+            rotor5->destroy = true;
+            bullets.erase(bullets.begin() + i);
+        }
+        
+        
+        
+        
+    }
+    
     spotLight->Move(thunderbolt->GetVelocity(), dt);
     
-//    rotor->Spin(2*dt);
-//    rotor1->Spin(2*dt);
-//    rotor2->Spin(2*dt);
     airscrew->Rotate(3*dt);
     
     camera.Control();

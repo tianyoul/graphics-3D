@@ -26,6 +26,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		CE13BDF71FDC1BC100C6568C /* steel.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = steel.png; sourceTree = "<group>"; };
 		CE3EAF8A1FA7E231002C7167 /* graphics3D */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = graphics3D; sourceTree = BUILT_PRODUCTS_DIR; };
 		CE3EAF941FA7E45D002C7167 /* stb_image.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = stb_image.c; sourceTree = "<group>"; };
 		CE3EAF961FA7E45D002C7167 /* tigger.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = tigger.png; sourceTree = "<group>"; };
@@ -36,7 +37,6 @@
 		CE3EAF9F1FA7E5B4002C7167 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
 		CE3EAFA51FA7E69A002C7167 /* tigger.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = tigger.obj; sourceTree = "<group>"; };
 		CE3EAFA71FAE5ED1002C7167 /* lava.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = lava.png; sourceTree = "<group>"; };
-		CE3EAFAB1FAFABF6002C7167 /* icecream.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icecream.png; sourceTree = "<group>"; };
 		CE3EAFAC1FB09394002C7167 /* heli.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = heli.obj; sourceTree = "<group>"; };
 		CE3EAFAE1FB09394002C7167 /* mainrotor.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = mainrotor.obj; sourceTree = "<group>"; };
 		CE3EAFAF1FB09394002C7167 /* heliait.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = heliait.png; sourceTree = "<group>"; };
@@ -45,6 +45,7 @@
 		CE3EAFB21FB10F35002C7167 /* thunderbolt_airscrew.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = thunderbolt_airscrew.obj; sourceTree = "<group>"; };
 		CE3EAFB41FB10F35002C7167 /* orange.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = orange.png; sourceTree = "<group>"; };
 		CE3EAFB61FB111D3002C7167 /* orangeblue.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = orangeblue.png; sourceTree = "<group>"; };
+		CE80B6AB1FD963D9006B3E93 /* bullet.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = bullet.obj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -80,6 +81,8 @@
 		CE3EAF8C1FA7E231002C7167 /* graphics3D */ = {
 			isa = PBXGroup;
 			children = (
+				CE13BDF71FDC1BC100C6568C /* steel.png */,
+				CE80B6AB1FD963D9006B3E93 /* bullet.obj */,
 				CE3EAFB61FB111D3002C7167 /* orangeblue.png */,
 				CE3EAFB11FB10F35002C7167 /* thunderbolt_body.obj */,
 				CE3EAFB21FB10F35002C7167 /* thunderbolt_airscrew.obj */,
@@ -88,7 +91,6 @@
 				CE3EAFAC1FB09394002C7167 /* heli.obj */,
 				CE3EAFAE1FB09394002C7167 /* mainrotor.obj */,
 				CE3EAFAF1FB09394002C7167 /* heliait.png */,
-				CE3EAFAB1FAFABF6002C7167 /* icecream.png */,
 				CE3EAFA71FAE5ED1002C7167 /* lava.png */,
 				CE3EAFA51FA7E69A002C7167 /* tigger.obj */,
 				CE3EAF941FA7E45D002C7167 /* stb_image.c */,
